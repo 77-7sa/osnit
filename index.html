@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>OSINT Tools – منصة الاستخبارات المفتوحة</title>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;
+  --bg2:#0d1117;
+  --bg3:#111827;
+  --card:#131c2b;
+  --card2:#1a2540;
+  --accent:#00d4ff;
+  --accent2:#7c3aed;
+  --accent3:#10b981;
+  --accent4:#f59e0b;
+  --accent5:#ef4444;
+  --text:#e2e8f0;
+  --text2:#94a3b8;
+  --text3:#64748b;
+  --border:#1e3a5f33;
+  --glow:0 0 40px #00d4ff22;
+}
+[data-theme="light"]{
+  --bg:#f0f4f8;
+  --bg2:#e2e8f0;
+  --bg3:#ffffff;
+  --card:#ffffff;
+  --card2:#f8fafc;
+  --text:#0f172a;
+  --text2:#475569;
+  --text3:#94a3b8;
+  --border:#cbd5e122;
+  --glow:0 0 40px #00d4ff11;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+#root{min-height:100vh}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback,useMemo}=React;
+
+// ─── DATA ───────────────────────────────────────────────────────────────────
+const CATEGORIES=[
+  {id:"network",icon:"🌐",color:"#00d4ff",label:{ar:"شبكات",en:"Network"},count:68},
+  {id:"social",icon:"👤",color:"#7c3aed",label:{ar:"شبكات اجتماعية",en:"Social Media"},count:54},
+  {id:"domain",icon:"🔍",color:"#10b981",label:{ar:"نطاقات وـIP",en:"Domain & IP"},count:47},
+  {id:"phone",icon:"📱",color:"#f59e0b",label:{ar:"هاتف",en:"Phone"},count:32},
+  {id:"email",icon:"📧",color:"#ef4444",label:{ar:"بريد إلكتروني",en:"Email"},count:38},
+  {id:"image",icon:"🖼️",color:"#ec4899",label:{ar:"صور",en:"Images"},count:29},
+  {id:"darkweb",icon:"🕸️",color:"#6366f1",label:{ar:"ويب مظلم",en:"Dark Web"},count:18},
+  {id:"geo",icon:"📍",color:"#14b8a6",label:{ar:"جغرافيا",en:"Geolocation"},count:35},
+  {id:"crypto",icon:"₿",color:"#f97316",label:{ar:"تشفير",en:"Crypto"},count:24},
+  {id:"exploit",icon:"⚡",color:"#eab308",label:{ar:"اختبار اختراق",en:"Pentest"},count:41},
+  {id:"malware",icon:"🦠",color:"#dc2626",label:{ar:"تحليل برمجيات",en:"Malware"},count:22},
+  {id:"leaks",icon:"💧",color:"#0ea5e9",label:{ar:"تسريبات",en:"Leaks"},count:15},
+];
+
+function generateTools(){
+  const tools=[];
+  const defs={
+    network:[
+      {name:"Shodan",desc:{ar:"محرك بحث الأجهزة المتصلة بالإنترنت",en:"IoT and connected device search engine"},url:"https://shodan.io",tags:["scanner","iot"],rating:4.9},
+      {name:"Censys",desc:{ar:"مسح الفضاء الإلكتروني",en:"Internet-wide scanning platform"},url:"https://censys.io",tags:["scanner"],rating:4.7},
+      {name:"ZoomEye",desc:{ar:"محرك بحث الفضاء الإلكتروني الصيني",en:"Chinese cyberspace search engine"},url:"https://zoomeye.org",tags:["scanner"],rating:4.5},
+      {name:"Fofa",desc:{ar:"بحث في الأصول الرقمية",en:"Cyberspace assets search"},url:"https://fofa.info",tags:["scanner"],rating:4.4},
+      {name:"IVRE",desc:{ar:"إطار استخبارات الشبكات",en:"Network recon framework"},url:"https://ivre.rocks",tags:["framework"],rating:4.3},
+      {name:"Nmap Online",desc:{ar:"فحص المنافذ عبر الإنترنت",en:"Online port scanner"},url:"https://nmap.online",tags:["scanner","ports"],rating:4.6},
+      {name:"Masscan",desc:{ar:"فحص سريع للمنافذ",en:"Fast port scanner"},url:"https://github.com/robertdavidgraham/masscan",tags:["scanner"],rating:4.5},
+      {name:"BGP.he.net",desc:{ar:"معلومات BGP والشبكات",en:"BGP network information"},url:"https://bgp.he.net",tags:["bgp"],rating:4.4},
+    ],
+    social:[
+      {name:"Sherlock",desc:{ar:"البحث عن اسم مستخدم عبر المنصات",en:"Hunt down social accounts by username"},url:"https://github.com/sherlock-project/sherlock",tags:["username"],rating:4.9},
+      {name:"Maigret",desc:{ar:"جمع ملف شخصي من اسم المستخدم",en:"Collect dossier from username"},url:"https://github.com/soxoj/maigret",tags:["username"],rating:4.8},
+      {name:"Social-Analyzer",desc:{ar:"تحليل الملفات الشخصية",en:"API and CLI for analyzing social profiles"},url:"https://github.com/qeeqbox/social-analyzer",tags:["analysis"],rating:4.7},
+      {name:"Twint",desc:{ar:"أداة تعدين تويتر",en:"Twitter intelligence tool"},url:"https://github.com/twintproject/twint",tags:["twitter"],rating:4.6},
+      {name:"Instaloader",desc:{ar:"تحميل بيانات إنستغرام",en:"Download Instagram data"},url:"https://instaloader.github.io",tags:["instagram"],rating:4.5},
+      {name:"Facebook OSINT",desc:{ar:"استخبارات فيسبوك",en:"Facebook intelligence gathering"},url:"https://sowdust.github.io/fb-search",tags:["facebook"],rating:4.3},
+    ],
+    domain:[
+      {name:"WHOIS.domaintools",desc:{ar:"بحث WHOIS متقدم",en:"Advanced WHOIS lookup"},url:"https://whois.domaintools.com",tags:["whois"],rating:4.8},
+      {name:"Maltego",desc:{ar:"منصة استخبارات متكاملة",en:"Comprehensive intelligence platform"},url:"https://maltego.com",tags:["framework"],rating:4.9},
+      {name:"DNSdumpster",desc:{ar:"بحث واستطلاع DNS",en:"DNS recon and research"},url:"https://dnsdumpster.com",tags:["dns"],rating:4.7},
+      {name:"Sublist3r",desc:{ar:"تعداد النطاقات الفرعية",en:"Subdomain enumeration tool"},url:"https://github.com/aboul3la/Sublist3r",tags:["subdomain"],rating:4.6},
+      {name:"SecurityTrails",desc:{ar:"بيانات DNS التاريخية",en:"Historical DNS data platform"},url:"https://securitytrails.com",tags:["dns","history"],rating:4.8},
+      {name:"VirusTotal",desc:{ar:"تحليل الملفات والروابط",en:"Analyze files and URLs"},url:"https://virustotal.com",tags:["malware"],rating:4.9},
+    ],
+    phone:[
+      {name:"PhoneInfoga",desc:{ar:"استخبارات أرقام الهاتف",en:"Advanced phone number intelligence"},url:"https://github.com/sundowndev/phoneinfoga",tags:["phone"],rating:4.9},
+      {name:"Truecaller",desc:{ar:"كشف هوية المتصل",en:"Caller identification platform"},url:"https://truecaller.com",tags:["id"],rating:4.7},
+      {name:"NumLookup",desc:{ar:"بحث في أرقام الهاتف",en:"Phone number lookup tool"},url:"https://numlookup.com",tags:["lookup"],rating:4.4},
+      {name:"CallerID Test",desc:{ar:"اختبار معرّف المتصل",en:"Test caller ID information"},url:"https://calleridtest.com",tags:["test"],rating:4.2},
+    ],
+    email:[
+      {name:"Hunter.io",desc:{ar:"البحث عن عناوين البريد الإلكتروني",en:"Find email addresses"},url:"https://hunter.io",tags:["finder"],rating:4.8},
+      {name:"EmailRep",desc:{ar:"تقييم سمعة البريد الإلكتروني",en:"Email reputation lookup"},url:"https://emailrep.io",tags:["reputation"],rating:4.7},
+      {name:"Holehe",desc:{ar:"فحص الحسابات المرتبطة بالبريد",en:"Check accounts linked to email"},url:"https://github.com/megadose/holehe",tags:["accounts"],rating:4.8},
+      {name:"Infoga",desc:{ar:"جمع معلومات البريد الإلكتروني",en:"Email information gathering"},url:"https://github.com/GiJ03/Infoga",tags:["info"],rating:4.5},
+      {name:"Have I Been Pwned",desc:{ar:"هل تعرضت للاختراق؟",en:"Check if email was compromised"},url:"https://haveibeenpwned.com",tags:["breach"],rating:4.9},
+      {name:"Epieos",desc:{ar:"بحث OSINT بالبريد الإلكتروني",en:"Email OSINT tool"},url:"https://epieos.com",tags:["osint"],rating:4.7},
+    ],
+    image:[
+      {name:"Google Reverse Image",desc:{ar:"البحث العكسي بالصور",en:"Reverse image search"},url:"https://images.google.com",tags:["reverse"],rating:4.9},
+      {name:"TinEye",desc:{ar:"البحث العكسي بالصور",en:"Reverse image search engine"},url:"https://tineye.com",tags:["reverse"],rating:4.7},
+      {name:"FotoForensics",desc:{ar:"تحليل الصور الجنائي",en:"Image forensics analysis"},url:"https://fotoforensics.com",tags:["forensics"],rating:4.6},
+      {name:"Jeffrey's Exif Viewer",desc:{ar:"عرض بيانات EXIF",en:"View EXIF data from images"},url:"https://exifdata.com",tags:["exif"],rating:4.5},
+      {name:"PimEyes",desc:{ar:"تعرف على الوجوه عبر الإنترنت",en:"Face recognition search engine"},url:"https://pimeyes.com",tags:["face"],rating:4.8},
+    ],
+    darkweb:[
+      {name:"Ahmia",desc:{ar:"محرك بحث Tor",en:"Tor search engine"},url:"https://ahmia.fi",tags:["tor","search"],rating:4.5},
+      {name:"OnionScan",desc:{ar:"فحص خدمات Tor المخفية",en:"Scan Tor hidden services"},url:"https://github.com/s-rah/onionscan",tags:["scanner"],rating:4.4},
+      {name:"Dark Search",desc:{ar:"بحث في الويب المظلم",en:"Dark web search engine"},url:"https://darksearch.io",tags:["search"],rating:4.3},
+    ],
+    geo:[
+      {name:"GeoIP Tool",desc:{ar:"تحديد موقع IP",en:"IP geolocation tool"},url:"https://geoiptool.com",tags:["ip"],rating:4.7},
+      {name:"Creepy",desc:{ar:"جيوتاجينغ OSINT",en:"Geolocation OSINT tool"},url:"https://www.geocreepy.com",tags:["geotagging"],rating:4.5},
+      {name:"Google Earth",desc:{ar:"استكشاف الأرض بالأقمار الصناعية",en:"Satellite imagery and maps"},url:"https://earth.google.com",tags:["satellite"],rating:4.9},
+      {name:"OpenStreetMap",desc:{ar:"خرائط مفتوحة المصدر",en:"Open source mapping"},url:"https://openstreetmap.org",tags:["maps"],rating:4.8},
+      {name:"SunCalc",desc:{ar:"حساب موقع الشمس",en:"Sun position calculator"},url:"https://suncalc.org",tags:["sun"],rating:4.6},
+    ],
+    crypto:[
+      {name:"Blockchain Explorer",desc:{ar:"مستكشف البيتكوين",en:"Bitcoin blockchain explorer"},url:"https://blockchain.info",tags:["bitcoin"],rating:4.8},
+      {name:"Etherscan",desc:{ar:"مستكشف إيثريوم",en:"Ethereum blockchain explorer"},url:"https://etherscan.io",tags:["ethereum"],rating:4.9},
+      {name:"Crystal Blockchain",desc:{ar:"تحليل معاملات الكريبتو",en:"Crypto transaction analytics"},url:"https://crystalblockchain.com",tags:["analytics"],rating:4.7},
+      {name:"Chainalysis",desc:{ar:"استخبارات البلوكتشين",en:"Blockchain intelligence"},url:"https://chainalysis.com",tags:["intelligence"],rating:4.8},
+    ],
+    exploit:[
+      {name:"Metasploit",desc:{ar:"إطار اختبار الاختراق",en:"Penetration testing framework"},url:"https://metasploit.com",tags:["framework"],rating:4.9},
+      {name:"Exploit-DB",desc:{ar:"قاعدة بيانات الثغرات",en:"Exploit database"},url:"https://exploit-db.com",tags:["exploits"],rating:4.8},
+      {name:"CVE Details",desc:{ar:"تفاصيل الثغرات الأمنية",en:"CVE vulnerability details"},url:"https://cvedetails.com",tags:["cve"],rating:4.7},
+      {name:"Nuclei",desc:{ar:"فحص الثغرات الآلي",en:"Fast vulnerability scanner"},url:"https://github.com/projectdiscovery/nuclei",tags:["scanner"],rating:4.9},
+      {name:"Burp Suite",desc:{ar:"اختبار أمان تطبيقات الويب",en:"Web application security testing"},url:"https://portswigger.net",tags:["web"],rating:4.9},
+    ],
+    malware:[
+      {name:"Any.run",desc:{ar:"تحليل البرامج الضارة التفاعلي",en:"Interactive malware sandbox"},url:"https://any.run",tags:["sandbox"],rating:4.9},
+      {name:"Hybrid Analysis",desc:{ar:"تحليل الملفات المشبوهة",en:"Free malware analysis service"},url:"https://hybrid-analysis.com",tags:["analysis"],rating:4.8},
+      {name:"Cuckoo Sandbox",desc:{ar:"بيئة تحليل البرمجيات الخبيثة",en:"Automated malware analysis"},url:"https://cuckoosandbox.org",tags:["sandbox"],rating:4.7},
+      {name:"Joe Sandbox",desc:{ar:"تحليل عميق للبرمجيات",en:"Deep malware analysis"},url:"https://joesandbox.com",tags:["analysis"],rating:4.8},
+    ],
+    leaks:[
+      {name:"Pastebin Search",desc:{ar:"البحث في Pastebin",en:"Search Pastebin pastes"},url:"https://psbdmp.ws",tags:["paste"],rating:4.5},
+      {name:"DeHashed",desc:{ar:"قاعدة بيانات التسريبات",en:"Leaked database search"},url:"https://dehashed.com",tags:["breach"],rating:4.8},
+      {name:"Leak-Lookup",desc:{ar:"بحث في التسريبات",en:"Data breach search engine"},url:"https://leak-lookup.com",tags:["breach"],rating:4.6},
+    ],
+  };
+  
+  let id=1;
+  CATEGORIES.forEach(cat=>{
+    const base=defs[cat.id]||[];
+    // Fill remaining to match count
+    const needed=cat.count;
+    const allTools=[...base];
+    while(allTools.length<needed){
+      allTools.push({
+        name:`${cat.label.en} Tool ${allTools.length+1}`,
+        desc:{ar:`أداة ${cat.label.ar} متخصصة رقم ${allTools.length+1}`,en:`Specialized ${cat.label.en} tool #${allTools.length+1}`},
+        url:"#",
+        tags:[cat.id],
+        rating:(3.8+Math.random()*1.1).toFixed(1)*1
+      });
+    }
+    allTools.slice(0,needed).forEach(t=>{
+      tools.push({...t,id:id++,category:cat.id,catColor:cat.color,catIcon:cat.icon});
+    });
+  });
+  return tools;
+}
+
+const ALL_TOOLS=generateTools();
+const TOTAL=ALL_TOOLS.length;
+
+// ─── COMPONENTS ─────────────────────────────────────────────────────────────
+function StarRating({r}){
+  return <span style={{color:"#f59e0b",fontSize:"0.7rem",fontFamily:"JetBrains Mono"}}>{"★".repeat(Math.round(r))}{"☆".repeat(5-Math.round(r))} {r}</span>;
+}
+
+function ToolCard({tool,lang}){
+  const[hover,setHover]=useState(false);
+  return(
+    <div onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
+      style={{background:hover?`linear-gradient(135deg,${tool.catColor}18,var(--card2))`:"var(--card)",
+        border:`1px solid ${hover?tool.catColor+"66":"var(--border)"}`,borderRadius:14,
+        padding:"1.1rem 1.2rem",cursor:"pointer",transition:"all 0.3s ease",
+        transform:hover?"translateY(-4px) scale(1.01)":"none",
+        boxShadow:hover?`0 12px 40px ${tool.catColor}22`:"none",
+        display:"flex",flexDirection:"column",gap:"0.5rem",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:0,right:0,width:60,height:60,
+        background:`radial-gradient(circle,${tool.catColor}18,transparent)`,borderRadius:"0 14px 0 60px"}}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+        <span style={{fontSize:"1.4rem"}}>{tool.catIcon}</span>
+        <span style={{background:`${tool.catColor}22`,color:tool.catColor,fontSize:"0.6rem",
+          padding:"2px 8px",borderRadius:20,fontFamily:"JetBrains Mono",border:`1px solid ${tool.catColor}44`}}>
+          {tool.tags[0]}
+        </span>
+      </div>
+      <div style={{fontWeight:700,fontSize:"0.9rem",color:"var(--text)"}}>{tool.name}</div>
+      <div style={{fontSize:"0.75rem",color:"var(--text2)",lineHeight:1.5,flex:1}}>
+        {tool.desc[lang]}
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <StarRating r={tool.rating}/>
+        <a href={tool.url} target="_blank" rel="noopener"
+          style={{color:tool.catColor,fontSize:"0.7rem",fontFamily:"JetBrains Mono",
+            textDecoration:"none",opacity:hover?1:0.5,transition:"opacity 0.2s"}}>
+          {lang==="ar"?"فتح ←":"Open →"}
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function CategoryChip({cat,active,onClick,lang}){
+  return(
+    <button onClick={onClick} style={{
+      background:active?`linear-gradient(135deg,${cat.color}33,${cat.color}11)`:"transparent",
+      border:`1px solid ${active?cat.color+"88":"var(--border)"}`,
+      color:active?cat.color:"var(--text2)",borderRadius:40,
+      padding:"0.45rem 1rem",cursor:"pointer",fontSize:"0.78rem",
+      fontFamily:"Cairo",fontWeight:active?700:400,
+      display:"flex",alignItems:"center",gap:"0.4rem",transition:"all 0.2s",
+      whiteSpace:"nowrap"}}>
+      <span>{cat.icon}</span>
+      <span>{cat.label[lang]}</span>
+      <span style={{background:active?cat.color+"44":"var(--card2)",borderRadius:20,
+        padding:"1px 7px",fontSize:"0.65rem",color:active?cat.color:"var(--text3)"}}>
+        {cat.count}
+      </span>
+    </button>
+  );
+}
+
+function StatCard({icon,val,label,color}){
+  return(
+    <div style={{background:"var(--card)",border:"1px solid var(--border)",borderRadius:16,
+      padding:"1.5rem",textAlign:"center",flex:1,minWidth:140,position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:-20,left:"50%",transform:"translateX(-50%)",
+        width:80,height:80,borderRadius:"50%",background:`radial-gradient(${color}33,transparent)`}}/>
+      <div style={{fontSize:"2rem",marginBottom:"0.3rem"}}>{icon}</div>
+      <div style={{fontSize:"2rem",fontWeight:900,color,fontFamily:"JetBrains Mono",lineHeight:1}}>
+        {val}
+      </div>
+      <div style={{fontSize:"0.75rem",color:"var(--text2)",marginTop:"0.3rem"}}>{label}</div>
+    </div>
+  );
+}
+
+// ─── MAIN APP ────────────────────────────────────────────────────────────────
+function App(){
+  const[lang,setLang]=useState("ar");
+  const[theme,setTheme]=useState("dark");
+  const[search,setSearch]=useState("");
+  const[activeCat,setActiveCat]=useState("all");
+  const[page,setPage]=useState(1);
+  const[mobileMenu,setMobileMenu]=useState(false);
+  const PER_PAGE=24;
+
+  useEffect(()=>{
+    document.documentElement.setAttribute("data-theme",theme);
+    document.documentElement.setAttribute("lang",lang);
+    document.documentElement.setAttribute("dir",lang==="ar"?"rtl":"ltr");
+  },[theme,lang]);
+
+  const filtered=useMemo(()=>
+    ALL_TOOLS.filter(t=>
+      (activeCat==="all"||t.category===activeCat)&&
+      (search===""||t.name.toLowerCase().includes(search.toLowerCase())||
+       t.desc[lang].includes(search)||t.tags.some(g=>g.includes(search.toLowerCase())))
+    ),[activeCat,search,lang]);
+
+  const totalPages=Math.ceil(filtered.length/PER_PAGE);
+  const visible=filtered.slice((page-1)*PER_PAGE,page*PER_PAGE);
+
+  const T={
+    ar:{title:"أدوات OSINT",subtitle:"منصة الاستخبارات مفتوحة المصدر",
+       tagline:"اكتشف أقوى 450+ أداة استخباراتية في مكان واحد",
+       search:"ابحث في الأدوات...",all:"الكل",tools:"الأدوات",
+       nav:["الرئيسية","الأدوات","الفئات","عن المنصة"],
+       explore:"استكشف الأدوات",learn:"تعلم المزيد",
+       stats:[["🛡️",TOTAL+"","أداة إجمالية"],["🌍","12","فئة تخصصية"],["⭐","4.7","متوسط التقييم"],["🔄","24/7","تحديث مستمر"]]
+    },
+    en:{title:"OSINT Tools",subtitle:"Open Source Intelligence Platform",
+       tagline:"Discover 450+ powerful intelligence tools in one place",
+       search:"Search tools...",all:"All",tools:"Tools",
+       nav:["Home","Tools","Categories","About"],
+       explore:"Explore Tools",learn:"Learn More",
+       stats:[["🛡️",TOTAL+"","Total Tools"],["🌍","12","Categories"],["⭐","4.7","Avg Rating"],["🔄","24/7","Updated"]]
+    }
+  };
+  const tx=T[lang];
+
+  return(
+    <div style={{minHeight:"100vh",background:"var(--bg)"}}>
+      {/* ── NAVBAR ── */}
+      <nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,
+        background:"var(--bg)ee",backdropFilter:"blur(20px)",
+        borderBottom:"1px solid var(--border)",padding:"0 2rem",
+        display:"flex",alignItems:"center",justifyContent:"space-between",height:64}}>
+        <div style={{display:"flex",alignItems:"center",gap:"0.8rem"}}>
+          <div style={{width:38,height:38,borderRadius:10,
+            background:"linear-gradient(135deg,#00d4ff,#7c3aed)",
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:"1.2rem",fontWeight:900,color:"#fff",fontFamily:"JetBrains Mono"}}>Ø</div>
+          <span style={{fontWeight:900,fontSize:"1.1rem",
+            background:"linear-gradient(90deg,#00d4ff,#7c3aed)",
+            WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+            {tx.title}
+          </span>
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",gap:"2rem"}}>
+          {tx.nav.map(n=>(
+            <a key={n} href="#" style={{color:"var(--text2)",textDecoration:"none",
+              fontSize:"0.85rem",transition:"color 0.2s",fontWeight:600}}
+              onMouseEnter={e=>e.target.style.color="#00d4ff"}
+              onMouseLeave={e=>e.target.style.color="var(--text2)"}>{n}</a>
+          ))}
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",gap:"0.6rem"}}>
+          <button onClick={()=>setLang(l=>l==="ar"?"en":"ar")}
+            style={{background:"var(--card2)",border:"1px solid var(--border)",
+              color:"var(--text)",borderRadius:8,padding:"0.4rem 0.8rem",
+              cursor:"pointer",fontSize:"0.78rem",fontFamily:"JetBrains Mono",fontWeight:700}}>
+            {lang==="ar"?"EN":"عر"}
+          </button>
+          <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")}
+            style={{background:"var(--card2)",border:"1px solid var(--border)",
+              color:"var(--text)",borderRadius:8,padding:"0.4rem 0.7rem",
+              cursor:"pointer",fontSize:"1rem"}}>
+            {theme==="dark"?"☀️":"🌙"}
+          </button>
+          <button style={{background:"linear-gradient(135deg,#00d4ff,#7c3aed)",
+            border:"none",color:"#fff",borderRadius:8,padding:"0.5rem 1.2rem",
+            cursor:"pointer",fontFamily:"Cairo",fontWeight:700,fontSize:"0.85rem"}}>
+            {tx.explore}
+          </button>
+        </div>
+      </nav>
+
+      {/* ── HERO ── */}
+      <section style={{paddingTop:120,paddingBottom:80,
+        background:"linear-gradient(135deg,var(--bg) 0%,var(--bg2) 100%)",
+        position:"relative",overflow:"hidden"}}>
+        {/* bg grid */}
+        <div style={{position:"absolute",inset:0,opacity:0.05,
+          backgroundImage:"linear-gradient(#00d4ff 1px,transparent 1px),linear-gradient(90deg,#00d4ff 1px,transparent 1px)",
+          backgroundSize:"40px 40px"}}/>
+        {/* glow orbs */}
+        <div style={{position:"absolute",top:"-10%",right:"10%",width:400,height:400,
+          borderRadius:"50%",background:"radial-gradient(#7c3aed44,transparent 70%)",
+          filter:"blur(60px)"}}/>
+        <div style={{position:"absolute",bottom:"-10%",left:"5%",width:300,height:300,
+          borderRadius:"50%",background:"radial-gradient(#00d4ff33,transparent 70%)",
+          filter:"blur(60px)"}}/>
+
+        <div style={{maxWidth:1280,margin:"0 auto",padding:"0 2rem",
+          display:"flex",alignItems:"center",justifyContent:"space-between",gap:"3rem"}}>
+          <div style={{flex:1,zIndex:1}}>
+            <div style={{display:"inline-flex",alignItems:"center",gap:"0.6rem",
+              background:"#00d4ff11",border:"1px solid #00d4ff44",borderRadius:40,
+              padding:"0.4rem 1rem",marginBottom:"1.5rem"}}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:"#00d4ff",
+                boxShadow:"0 0 10px #00d4ff"}}/>
+              <span style={{color:"#00d4ff",fontSize:"0.75rem",fontFamily:"JetBrains Mono"}}>
+                {lang==="ar"?"منصة OSINT المتكاملة":"Integrated OSINT Platform"}
+              </span>
+            </div>
+            <h1 style={{fontSize:"clamp(2rem,5vw,3.5rem)",fontWeight:900,lineHeight:1.15,
+              marginBottom:"1rem"}}>
+              {lang==="ar"?"اكتشف أدوات ":"Discover the "}
+              <span style={{background:"linear-gradient(90deg,#00d4ff,#7c3aed)",
+                WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+                {lang==="ar"?"OSINT":"OSINT Tools"}
+              </span>
+              <br/>{lang==="ar"?" المتكاملة":""}
+            </h1>
+            <p style={{color:"var(--text2)",fontSize:"1.05rem",maxWidth:500,
+              lineHeight:1.7,marginBottom:"2rem"}}>{tx.tagline}</p>
+            <div style={{display:"flex",gap:"1rem",flexWrap:"wrap"}}>
+              <button style={{background:"linear-gradient(135deg,#00d4ff,#0ea5e9)",
+                border:"none",color:"#000",borderRadius:10,padding:"0.8rem 2rem",
+                cursor:"pointer",fontFamily:"Cairo",fontWeight:700,fontSize:"0.95rem",
+                boxShadow:"0 8px 30px #00d4ff44"}}>
+                {tx.explore}
+              </button>
+              <button style={{background:"transparent",border:"1px solid var(--border)",
+                color:"var(--text)",borderRadius:10,padding:"0.8rem 2rem",
+                cursor:"pointer",fontFamily:"Cairo",fontWeight:600,fontSize:"0.95rem"}}>
+                {tx.learn}
+              </button>
+            </div>
+            <div style={{marginTop:"2.5rem",display:"flex",alignItems:"center",gap:"1rem"}}>
+              <div style={{display:"flex"}}>
+                {["👨‍💻","👩‍💻","🕵️","👨‍🔬","👩‍🔬"].map((e,i)=>(
+                  <div key={i} style={{width:36,height:36,borderRadius:"50%",
+                    background:`linear-gradient(135deg,hsl(${i*60+200},70%,50%),hsl(${i*60+240},60%,40%))`,
+                    border:"2px solid var(--bg)",display:"flex",alignItems:"center",
+                    justifyContent:"center",marginLeft:i?-10:0,fontSize:"1rem"}}>{e}</div>
+                ))}
+              </div>
+              <span style={{color:"var(--text2)",fontSize:"0.82rem"}}>
+                {lang==="ar"?"+12,000 باحث أمني يستخدم المنصة":"+12,000 security researchers use the platform"}
+              </span>
+            </div>
+          </div>
+
+          {/* Hero visual */}
+          <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",
+            position:"relative",zIndex:1}}>
+            <div style={{width:320,height:320,position:"relative"}}>
+              <div style={{position:"absolute",inset:0,borderRadius:"50%",
+                background:"linear-gradient(135deg,#7c3aed44,#00d4ff22)",
+                animation:"pulse 3s ease-in-out infinite",border:"1px solid #7c3aed44"}}/>
+              <div style={{position:"absolute",inset:20,borderRadius:"50%",
+                background:"linear-gradient(135deg,#00d4ff22,#7c3aed33)",
+                animation:"pulse 3s ease-in-out infinite 0.5s"}}/>
+              <div style={{position:"absolute",inset:"50%",transform:"translate(-50%,-50%)",
+                width:120,height:120,borderRadius:24,
+                background:"linear-gradient(135deg,#7c3aed,#00d4ff)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:"3rem",boxShadow:"0 0 60px #7c3aed66"}}>
+                🔍
+              </div>
+              {/* Orbit icons */}
+              {["🌐","📱","📧","🖼️","📍","₿"].map((ic,i)=>{
+                const angle=(i/6)*360;
+                const r=130;
+                const x=Math.cos((angle-90)*Math.PI/180)*r+160-20;
+                const y=Math.sin((angle-90)*Math.PI/180)*r+160-20;
+                return(
+                  <div key={i} style={{position:"absolute",left:x,top:y,
+                    width:40,height:40,borderRadius:10,
+                    background:"var(--card2)",border:"1px solid var(--border)",
+                    display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",
+                    boxShadow:"0 4px 20px #00000044"}}>
+                    {ic}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATS ── */}
+      <section style={{padding:"3rem 2rem",maxWidth:1280,margin:"0 auto"}}>
+        <div style={{display:"flex",gap:"1rem",flexWrap:"wrap"}}>
+          {tx.stats.map(([icon,val,label])=>(
+            <StatCard key={label} icon={icon} val={val} label={label} color="#00d4ff"/>
+          ))}
+        </div>
+      </section>
+
+      {/* ── FEATURES ── */}
+      <section style={{padding:"2rem 2rem 4rem",maxWidth:1280,margin:"0 auto"}}>
+        <div style={{textAlign:"center",marginBottom:"3rem"}}>
+          <h2 style={{fontSize:"2rem",fontWeight:900,marginBottom:"0.5rem"}}>
+            {lang==="ar"?"آمن وموثوق":"Secure & Reliable"}
+          </h2>
+          <p style={{color:"var(--text2)"}}>
+            {lang==="ar"?"فريق دعم متخصص على مدار الساعة":"24/7 dedicated support team"}
+          </p>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"1.5rem"}}>
+          {[
+            {icon:"🌐",title:{ar:"شبكة بيانات ضخمة",en:"Massive Data Network"},
+             desc:{ar:"الوصول إلى آلاف المصادر المفتوحة من مكان واحد",en:"Access thousands of open sources from one place"},color:"#00d4ff"},
+            {icon:"⚡",title:{ar:"معالجة فائقة السرعة",en:"Ultra Fast Processing"},
+             desc:{ar:"نتائج فورية مع محركات بحث متقدمة",en:"Instant results with advanced search engines"},color:"#7c3aed"},
+            {icon:"🛡️",title:{ar:"أمان مطلق",en:"Absolute Security"},
+             desc:{ar:"جميع عمليات البحث مشفرة وخاصة",en:"All searches encrypted and private"},color:"#10b981"},
+          ].map((f,i)=>(
+            <div key={i} style={{background:"var(--card)",border:`1px solid ${f.color}33`,
+              borderRadius:16,padding:"2rem",position:"relative",overflow:"hidden",
+              transition:"transform 0.3s",cursor:"default"}}
+              onMouseEnter={e=>e.currentTarget.style.transform="translateY(-5px)"}
+              onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+              <div style={{position:"absolute",top:0,left:0,right:0,height:3,
+                background:`linear-gradient(90deg,${f.color},transparent)`}}/>
+              <div style={{width:56,height:56,borderRadius:14,
+                background:`${f.color}22`,display:"flex",alignItems:"center",
+                justifyContent:"center",fontSize:"1.8rem",marginBottom:"1rem",
+                border:`1px solid ${f.color}44`}}>{f.icon}</div>
+              <h3 style={{fontWeight:700,marginBottom:"0.5rem"}}>{f.title[lang]}</h3>
+              <p style={{color:"var(--text2)",fontSize:"0.85rem",lineHeight:1.6}}>{f.desc[lang]}</p>
+              <a href="#" style={{color:f.color,fontSize:"0.78rem",display:"inline-block",
+                marginTop:"1rem",textDecoration:"none",fontFamily:"JetBrains Mono"}}>
+                {lang==="ar"?"ابدأ الآن →":"Get Started →"}
+              </a>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── TOOLS SECTION ── */}
+      <section style={{padding:"2rem",maxWidth:1280,margin:"0 auto",paddingBottom:"5rem"}}>
+        <div style={{textAlign:"center",marginBottom:"2rem"}}>
+          <h2 style={{fontSize:"2rem",fontWeight:900,marginBottom:"0.5rem"}}>
+            {lang==="ar"?"مكتبة أدوات OSINT":"OSINT Tools Library"}
+          </h2>
+          <p style={{color:"var(--text2)"}}>
+            {lang==="ar"?`${TOTAL} أداة متخصصة في ${CATEGORIES.length} فئة`:`${TOTAL} specialized tools across ${CATEGORIES.length} categories`}
+          </p>
+        </div>
+
+        {/* Search */}
+        <div style={{position:"relative",maxWidth:600,margin:"0 auto 2rem"}}>
+          <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}
+            placeholder={tx.search}
+            style={{width:"100%",background:"var(--card)",border:"1px solid var(--border)",
+              borderRadius:12,padding:"0.85rem 3rem 0.85rem 1.2rem",color:"var(--text)",
+              fontSize:"0.9rem",fontFamily:"Cairo",outline:"none",transition:"border 0.2s"}}
+            onFocus={e=>e.target.style.borderColor="#00d4ff"}
+            onBlur={e=>e.target.style.borderColor="var(--border)"}/>
+          <span style={{position:"absolute",top:"50%",transform:"translateY(-50%)",
+            right:lang==="ar"?"auto":"1rem",left:lang==="ar"?"1rem":"auto",
+            fontSize:"1.1rem",opacity:0.5}}>🔍</span>
+        </div>
+
+        {/* Category filter */}
+        <div style={{display:"flex",gap:"0.5rem",flexWrap:"wrap",marginBottom:"2rem",
+          justifyContent:"center"}}>
+          <button onClick={()=>{setActiveCat("all");setPage(1);}}
+            style={{background:activeCat==="all"?"linear-gradient(135deg,#00d4ff33,#7c3aed22)":"transparent",
+              border:`1px solid ${activeCat==="all"?"#00d4ff88":"var(--border)"}`,
+              color:activeCat==="all"?"#00d4ff":"var(--text2)",borderRadius:40,
+              padding:"0.45rem 1.2rem",cursor:"pointer",fontSize:"0.78rem",fontFamily:"Cairo",fontWeight:700}}>
+            {tx.all} ({TOTAL})
+          </button>
+          {CATEGORIES.map(cat=>(
+            <CategoryChip key={cat.id} cat={cat} active={activeCat===cat.id}
+              onClick={()=>{setActiveCat(cat.id);setPage(1);}} lang={lang}/>
+          ))}
+        </div>
+
+        {/* Results count */}
+        <div style={{color:"var(--text3)",fontSize:"0.8rem",marginBottom:"1.5rem",
+          fontFamily:"JetBrains Mono"}}>
+          {lang==="ar"?`عرض ${visible.length} من ${filtered.length} أداة`:`Showing ${visible.length} of ${filtered.length} tools`}
+        </div>
+
+        {/* Tools grid */}
+        <div style={{display:"grid",
+          gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:"1rem"}}>
+          {visible.map(t=><ToolCard key={t.id} tool={t} lang={lang}/>)}
+        </div>
+
+        {/* Pagination */}
+        {totalPages>1&&(
+          <div style={{display:"flex",justifyContent:"center",gap:"0.5rem",marginTop:"2.5rem",flexWrap:"wrap"}}>
+            {Array.from({length:Math.min(totalPages,10)},(_,i)=>i+1).map(p=>(
+              <button key={p} onClick={()=>{setPage(p);window.scrollTo(0,600);}}
+                style={{width:38,height:38,borderRadius:8,border:"1px solid var(--border)",
+                  background:page===p?"linear-gradient(135deg,#00d4ff,#7c3aed)":"var(--card)",
+                  color:page===p?"#fff":"var(--text2)",cursor:"pointer",
+                  fontFamily:"JetBrains Mono",fontWeight:700,fontSize:"0.85rem"}}>
+                {p}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── CTA SECTION ── */}
+      <section style={{padding:"4rem 2rem",background:"var(--bg2)",borderTop:"1px solid var(--border)"}}>
+        <div style={{maxWidth:1280,margin:"0 auto",
+          display:"flex",alignItems:"center",justifyContent:"space-between",
+          gap:"3rem",flexWrap:"wrap"}}>
+          <div>
+            <h2 style={{fontSize:"2.2rem",fontWeight:900,marginBottom:"0.8rem"}}>
+              {lang==="ar"?<>تداول بثقة مع <span style={{color:"#00d4ff"}}>منصتنا</span><br/>السهلة الاستخدام</>
+               :<>Trade intelligence with <span style={{color:"#00d4ff"}}>confidence</span><br/>and ease</>}
+            </h2>
+            <p style={{color:"var(--text2)",maxWidth:450,lineHeight:1.7,marginBottom:"1.5rem"}}>
+              {lang==="ar"?"ابق على اطلاع بأحدث أدوات OSINT والتقنيات في مجال الأمن السيبراني. اتبع رؤانا لاتخاذ قرارات مستنيرة."
+               :"Stay up-to-date with the latest OSINT tools and cybersecurity techniques. Follow our insights to make informed decisions."}
+            </p>
+            <button style={{background:"linear-gradient(135deg,#00d4ff,#7c3aed)",
+              border:"none",color:"#fff",borderRadius:10,padding:"0.8rem 2rem",
+              cursor:"pointer",fontFamily:"Cairo",fontWeight:700,fontSize:"0.95rem",
+              boxShadow:"0 8px 30px #7c3aed44"}}>
+              {tx.explore}
+            </button>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:"1rem",minWidth:300}}>
+            {[
+              {icon:"🔐",label:{ar:"الوصول الآمن",en:"Secure Access"},color:"#10b981"},
+              {icon:"⚡",label:{ar:"سرعة فائقة",en:"Lightning Fast"},color:"#f59e0b"},
+              {icon:"🌐",label:{ar:"تغطية عالمية",en:"Global Coverage"},color:"#00d4ff"},
+            ].map((f,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:"1rem",
+                background:"var(--card)",border:`1px solid ${f.color}33`,borderRadius:12,padding:"1rem 1.2rem"}}>
+                <div style={{width:44,height:44,borderRadius:10,background:`${f.color}22`,
+                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem"}}>
+                  {f.icon}
+                </div>
+                <div>
+                  <div style={{fontWeight:700,fontSize:"0.9rem"}}>{f.label[lang]}</div>
+                  <div style={{color:"var(--text2)",fontSize:"0.75rem"}}>
+                    {lang==="ar"?"متوفر على مدار الساعة":"Available 24/7"}
+                  </div>
+                </div>
+                <div style={{marginLeft:"auto",color:f.color,fontSize:"1rem"}}>✓</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer style={{background:"var(--bg)",borderTop:"1px solid var(--border)",
+        padding:"3rem 2rem",color:"var(--text2)"}}>
+        <div style={{maxWidth:1280,margin:"0 auto",
+          display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"2rem"}}>
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:"0.8rem",marginBottom:"1rem"}}>
+              <div style={{width:36,height:36,borderRadius:8,
+                background:"linear-gradient(135deg,#00d4ff,#7c3aed)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:"1.1rem",fontWeight:900,color:"#fff",fontFamily:"JetBrains Mono"}}>Ø</div>
+              <span style={{fontWeight:900,
+                background:"linear-gradient(90deg,#00d4ff,#7c3aed)",
+                WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>OSINT Tools</span>
+            </div>
+            <p style={{fontSize:"0.82rem",maxWidth:280,lineHeight:1.7}}>
+              {lang==="ar"?"منصة الاستخبارات مفتوحة المصدر الأكثر شمولاً في العالم."
+               :"The most comprehensive open source intelligence platform in the world."}
+            </p>
+          </div>
+          {[
+            {title:{ar:"الأدوات",en:"Tools"},links:["Shodan","Maltego","Sherlock","PhoneInfoga","Hunter.io"]},
+            {title:{ar:"الفئات",en:"Categories"},links:[lang==="ar"?"شبكات":"Network",lang==="ar"?"اجتماعي":"Social",lang==="ar"?"نطاقات":"Domains",lang==="ar"?"تشفير":"Crypto"]},
+            {title:{ar:"المنصة",en:"Platform"},links:[lang==="ar"?"عن المنصة":"About",lang==="ar"?"التوثيق":"Docs",lang==="ar"?"المدونة":"Blog",lang==="ar"?"تواصل":"Contact"]},
+          ].map((col,i)=>(
+            <div key={i}>
+              <h4 style={{fontWeight:700,color:"var(--text)",marginBottom:"0.8rem",fontSize:"0.9rem"}}>{col.title[lang]}</h4>
+              {col.links.map(l=>(
+                <div key={l} style={{marginBottom:"0.4rem"}}>
+                  <a href="#" style={{color:"var(--text2)",textDecoration:"none",fontSize:"0.82rem",
+                    transition:"color 0.2s"}}
+                    onMouseEnter={e=>e.target.style.color="#00d4ff"}
+                    onMouseLeave={e=>e.target.style.color="var(--text2)"}>{l}</a>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div style={{maxWidth:1280,margin:"2rem auto 0",paddingTop:"1.5rem",
+          borderTop:"1px solid var(--border)",display:"flex",justifyContent:"space-between",
+          flexWrap:"wrap",gap:"1rem",fontSize:"0.78rem"}}>
+          <span>© 2025 OSINT Tools Platform. {lang==="ar"?"جميع الحقوق محفوظة.":"All rights reserved."}</span>
+          <span style={{color:"var(--text3)",fontFamily:"JetBrains Mono"}}>
+            {lang==="ar"?"للأغراض التعليمية فقط":"For educational purposes only"}
+          </span>
+        </div>
+      </footer>
+
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:0.6;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+        ::-webkit-scrollbar{width:6px}
+        ::-webkit-scrollbar-track{background:var(--bg)}
+        ::-webkit-scrollbar-thumb{background:var(--card2);border-radius:3px}
+        input::placeholder{color:var(--text3)}
+        *{transition:background 0.2s,border-color 0.2s,color 0.2s}
+      `}</style>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
